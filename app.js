@@ -17,32 +17,22 @@ app.listen(3000, (req, res) =>{
 const getNASummonerBySummonerNameAPI = 'https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/';
 const getMatchesBySummonerPuuIdAPI = 'https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/';
 const getMatchByMatchIdAPI = 'https://americas.api.riotgames.com/lol/match/v5/matches/';
-const riotAPIKey = 'RGAPI-01691bc2-d43b-4846-ab82-5058fd1a4b4b'
+const riotAPIKey = 'RGAPI-2aeb4e5f-b1a0-46ac-863e-b6818e60daf3'
 const riotAPISuffix = '?api_key=' + riotAPIKey
 
 // array to store all point totals - which we will add together at the end
 const pointTotals = [];
 var totalRankScore = 0;
-
 var pointSum = 0;
-
-// GET request to get summoner data back (after it has run through ranking logic) to the front end app 
-// This currently serves no purpose. Soon I will add functionality so it can be called in the front end
-// app.get('/getSummonerData', (req, res) => {
-//     res.json({
-//         "statusCode":200,
-//         "statusMessage": "SUCCESS"
-//     })
-// })
 
 // POST request to send the user input from the front end to the backend so we can check to see if it's a real account
 app.post('/sendSummonerName', async (req, res) => {
     const summonerName = req.body;
     const unparsedData = JSON.stringify(summonerName)
     const userSummoner = JSON.parse(unparsedData)
-    getSummonerBySummonerName(getNASummonerBySummonerNameAPI, userSummoner.summonerName, getMatchesBySummonerId)
-    res.json({ status_code: '200', rank: pointSum})
-    
+    await getSummonerBySummonerName(getNASummonerBySummonerNameAPI, userSummoner.summonerName, getMatchesBySummonerId)
+    console.log('total', pointSum)
+    res.json({status: '200', rank: pointSum})
 })
 
 
@@ -50,6 +40,7 @@ app.post('/sendSummonerName', async (req, res) => {
 // this function calls the Riot API and returns info about the summoner based off of their LoL summoner name, which we will use to call other API's to give us information. 
 // it uses the endpoint + the summoner name + the api key suffix for authorization
 function getSummonerBySummonerName(endpoint, summonerName, callback) {
+    console.log(endpoint + summonerName + riotAPISuffix)
     https.get(endpoint + summonerName + riotAPISuffix, (res) => {
         let summonerData = '';
         
@@ -146,38 +137,73 @@ function getSummonerBySummonerName(endpoint, summonerName, callback) {
         players.forEach(player => {
             if (playerId == player) {
                 
-                console.log('found - ', playerId)
-                
                 if (player == playerId) {
                     const playerObj = participantInfo.find(playerObj => playerObj.puuid == playerId) // using playerObj to find every json object that contains our puuid
-                    
+                    const role = playerObj.role
 
                     // takedowns is our first metric for grading
                     const takedowns = playerObj.challenges.takedowns
-                    console.log(playerObj)
-                    console.log(playerObj.summonerName, ' has ', takedowns, ' takedowns. ')
-                
-                    if (takedowns >= 35) {
-                        totalRankScore = totalRankScore + 9;
-                    } else if (takedowns < 35 && takedowns >= 30) {
-                        totalRankScore = totalRankScore + 7
-                    } else if (takedowns < 30 && takedowns >= 25) {
-                        totalRankScore = totalRankScore + 6
-                    } else if (takedowns < 25 && takedowns >= 20) {
-                        totalRankScore = totalRankScore + 5
-                    } else if (takedowns < 20 && takedowns >= 15) {
-                        totalRankScore = totalRankScore + 4
-                    } else if (takedowns < 15 && takedowns >= 10) {
-                        totalRankScore = totalRankScore + 3
-                    } else if (takedowns < 10 && takedowns >= 5) {
-                        totalRankScore = totalRankScore + 2
-                    } else if (takedowns < 5 && takedowns >= 1) {
-                        totalRankScore = totalRankScore + 1
-                    } else if (takedowns == 0) {
-                        totalRankScore = totalRankScore + 0
-                    }
     
+                    if (takedowns >= 35) {
+                        totalRankScore = totalRankScore + 20;
+                    } else if (takedowns < 35 && takedowns >= 30) {
+                        totalRankScore = totalRankScore + 18
+                    } else if (takedowns < 30 && takedowns >= 25) {
+                        totalRankScore = totalRankScore + 16
+                    } else if (takedowns < 25 && takedowns >= 20) {
+                        totalRankScore = totalRankScore + 14
+                    } else if (takedowns < 20 && takedowns >= 15) {
+                        totalRankScore = totalRankScore + 12
+                    } else if (takedowns < 15 && takedowns >= 10) {
+                        totalRankScore = totalRankScore + 6
+                    } else if (takedowns < 10 && takedowns >= 5) {
+                        totalRankScore = totalRankScore + 3
+                    } else if (takedowns < 5 && takedowns >= 1) {
+                        totalRankScore = totalRankScore - 3
+                    } else if (takedowns == 0) {
+                        totalRankScore = totalRankScore - 6
+                    }
                     
+                    // deaths will be our next metric
+                    const deaths = (playerObj.challenges.deaths)
+
+                    if (deaths > 5) {
+                        totalRankScore = totalRankScore - 10;
+                    } else if (deaths == 4) {
+                        totalRankScore = totalRankScore - 8
+                    } else if (deaths == 3) {
+                        totalRankScore = totalRankScore - 6
+                    } else if (deaths == 2) {
+                        totalRankScore = totalRankScore - 4
+                    } else if (deaths == 1) {
+                        totalRankScore = totalRankScore - 2
+                    } else if (deaths == 0) {
+                        totalRankScore = totalRankScore + 4
+                    }
+
+                    // vision score will be our next metric
+                    const vision = (playerObj.visionScore)
+
+                    if (vision > 40 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 20;
+                    } else if (vision < 40 && vision >= 35 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 18
+                    } else if (vision < 35 && vision >= 30 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 16
+                    } else if (vision < 30 && vision >= 25 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 14
+                    } else if (vision < 25 && vision >= 20 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 12
+                    } else if (vision < 20 && vision >= 15 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 10
+                    } else if (vision < 15 && vision >= 10 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 5
+                    } else if (vision < 10 && vision > 0 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore + 1
+                    } else if (vision == 0 && role != 'SUPPORT') {
+                        totalRankScore = totalRankScore - 2
+                    } 
+
                     pointTotals.push(totalRankScore)
                     
                 }
@@ -192,9 +218,7 @@ function getSummonerBySummonerName(endpoint, summonerName, callback) {
         for (let i = 0; i < pointTotals.length; i++) {
             pointSum += pointTotals[i];
         }
-
-        console.log('total points - ', pointSum);
-        
+        return pointSum;
     }
 }
 
