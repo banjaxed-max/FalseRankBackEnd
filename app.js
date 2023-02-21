@@ -5,7 +5,6 @@
 const express = require('express')
 const app = express()
 const https = require('https');
-const { PassThrough } = require('stream');
 
 app.use(express.json());
 
@@ -18,7 +17,7 @@ app.listen(3000, (req, res) =>{
 const getNASummonerBySummonerNameAPI = 'https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/';
 const getMatchesBySummonerPuuIdAPI = 'https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/';
 const getMatchByMatchIdAPI = 'https://americas.api.riotgames.com/lol/match/v5/matches/';
-const riotAPIKey = 'RGAPI-73d80f9a-eac3-4b82-94ef-87ea13033750'
+const riotAPIKey = 'RGAPI-29a42859-b679-476c-90fb-859a2fea3075'
 const riotAPISuffix = '?api_key=' + riotAPIKey
 
 // array to store all point totals - which we will add together at the end
@@ -143,19 +142,23 @@ function determineRank(matchInfo, playerId) {
     const unparsedParticipantInfo = JSON.stringify(matchInfo.info.participants)
     const participantInfo = JSON.parse(unparsedParticipantInfo)
 
+    if (participantInfo[0].role === 'NONE') {
+        
+    }
+    const participantRole = participantInfo[0].role
+
+    console.log('participantRole - ', participantRole)
+    
+    
+
     players.forEach(player => {
         if (playerId == player) {
             
             if (player == playerId) {
                 const playerObj = participantInfo.find(playerObj => playerObj.puuid == playerId) // using playerObj to find every json object that contains our puuid
                 const role = '';
-                try {
-                    role = playerObj.role
-                    console.log(role)
-                } catch(err) {
-                    notEnoughMatches(); 
-                }
-               
+                
+                // ALGORITHM
 
                 // takedowns is our first metric for grading
                 const takedowns = playerObj.challenges.takedowns
@@ -221,7 +224,7 @@ function determineRank(matchInfo, playerId) {
                 } 
 
                 calculateTotals()
-                console.log(totalGameScore)
+                console.log('total game score - ',totalGameScore)
                 pointTotals.push(totalGameScore)
                 
             }
@@ -231,6 +234,7 @@ function determineRank(matchInfo, playerId) {
     
 function notEnoughMatches() {
     message = 'not_enough_matches_found'
+    console.log(message);
     return message;
 } 
 
