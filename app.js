@@ -2,9 +2,12 @@
 // This contains the logic and API's for the front end portion of the app 
 
 // initializing dependencies
+const { query } = require('express');
 const express = require('express')
 const app = express()
 const https = require('https');
+const url = require('url');
+const querystring = require('querystring');
 
 app.use(express.json());
 
@@ -17,24 +20,26 @@ app.listen(3000, (req, res) =>{
 const getNASummonerBySummonerNameAPI = 'https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/';
 const getMatchesBySummonerPuuIdAPI = 'https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/';
 const getMatchByMatchIdAPI = 'https://americas.api.riotgames.com/lol/match/v5/matches/';
-const riotAPIKey = 'RGAPI-29a42859-b679-476c-90fb-859a2fea3075'
+const riotAPIKey = 'RGAPI-f25c582d-3b4a-403e-9c3f-a52c208856aa'
 const riotAPISuffix = '?api_key=' + riotAPIKey
 
 // array to store all point totals - which we will add together at the end
 // the reason we need all these values is because the foreach loop will evaluate games one at a time and save the values to the array so we can iterate through it and calculate a new score for each game
+// this also means we can see each game's score individually
 var pointTotals = []; // totalGameScore appends it's value to this each time the loop is iterated
 var totalGameScore = 0; // total summoner score of the game
 var pointSum = 0 // sum of the points that we use to calculate the rank
 var message = ''; // the message containing either their rank or a specified error message. this is what is sent back to the client
 
 
-// POST request to send the user input from the front end to the backend so we can check to see if it's a real account
-app.post('/sendSummonerName', async (req, res) => {
-    const summonerName = req.body;
-    const unparsedData = JSON.stringify(summonerName)
-    const userSummoner = JSON.parse(unparsedData)
+// GET request to send the user input from the front end to the backend so we can check to see if it's a real account and then perform our calculations
+app.get('/getSummonerData', async (req, res) => {
+    // here we are simply parsing through our request from the front end to find the summonerName input by the user
+    var request = url.parse(req.url).query;
+    var params = querystring.parse(request) 
+    const summonerName = params.summonerName
 
-    getSummonerBySummonerName(getNASummonerBySummonerNameAPI, userSummoner.summonerName, getMatchesBySummonerId)
+    getSummonerBySummonerName(getNASummonerBySummonerNameAPI, summonerName, getMatchesBySummonerId)
     
     // this will wait 5 seconds before sending the response back and resetting all values
     // soon, this system will probably be deprecated for a more 'real-time' solution as the app becomes more feature-rich. for right now though, this system works
@@ -142,101 +147,97 @@ function determineRank(matchInfo, playerId) {
     const unparsedParticipantInfo = JSON.stringify(matchInfo.info.participants)
     const participantInfo = JSON.parse(unparsedParticipantInfo)
 
-    if (participantInfo[0].role === 'NONE') {
-        
-    }
-    const participantRole = participantInfo[0].role
+    const performanceByPlayerId = participantInfo.find(obj => obj.puuid == playerId) // using game to find every json object that contains our puuid
 
-    console.log('participantRole - ', participantRole)
+    var deaths = participantInfo.deaths
+    var kills = participantInfo.kills
+    // var role = game.role
+    // var vision = game.visionScore
     
-    
+    const gameData = [];
 
     players.forEach(player => {
         if (playerId == player) {
             
-            if (player == playerId) {
-                const playerObj = participantInfo.find(playerObj => playerObj.puuid == playerId) // using playerObj to find every json object that contains our puuid
-                const role = '';
-                
-                // ALGORITHM
-
-                // takedowns is our first metric for grading
-                const takedowns = playerObj.challenges.takedowns
-
-                if (takedowns >= 35) {
-                    totalGameScore = totalGameScore + 20;
-                } else if (takedowns < 35 && takedowns >= 30) {
-                    totalGameScore = totalGameScore + 18
-                } else if (takedowns < 30 && takedowns >= 25) {
-                    totalGameScore = totalGameScore + 16
-                } else if (takedowns < 25 && takedowns >= 20) {
-                    totalGameScore = totalGameScore + 14
-                } else if (takedowns < 20 && takedowns >= 15) {
-                    totalGameScore = totalGameScore + 12
-                } else if (takedowns < 15 && takedowns >= 10) {
-                    totalGameScore = totalGameScore + 6
-                } else if (takedowns < 10 && takedowns >= 5) {
-                    totalGameScore = totalGameScore + 3
-                } else if (takedowns < 5 && takedowns >= 1) {
-                    totalGameScore = totalGameScore - 3
-                } else if (takedowns == 0) {
-                    totalGameScore = totalGameScore - 6
+            gameData.push(performanceByPlayerId)
+            for (let game in gameData) {
+                if (typeof game.kills === undefined) {
+                    gameData.pop();
                 }
-                
-                // deaths will be our next metric
-                const deaths = (playerObj.challenges.deaths)
-
-                if (deaths >= 5) {
-                    totalGameScore = totalGameScore - 10;
-                } else if (deaths == 4) {
-                    totalGameScore = totalGameScore - 8
-                } else if (deaths == 3) {
-                    totalGameScore = totalGameScore - 6
-                } else if (deaths == 2) {
-                    totalGameScore = totalGameScore - 4
-                } else if (deaths == 1) {
-                    totalGameScore = totalGameScore - 2
-                } else if (deaths == 0) {
-                    totalGameScore = totalGameScore + 6
-                }
-
-                // vision score will be our next metric
-                const vision = (playerObj.visionScore)
-
-                if (vision > 40 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 20;
-                } else if (vision < 40 && vision >= 35 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 18
-                } else if (vision < 35 && vision >= 30 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 16
-                } else if (vision < 30 && vision >= 25 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 14
-                } else if (vision < 25 && vision >= 20 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 12
-                } else if (vision < 20 && vision >= 15 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 10
-                } else if (vision < 15 && vision >= 10 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 5
-                } else if (vision < 10 && vision > 0 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore + 1
-                } else if (vision == 0 && role != 'SUPPORT') {
-                    totalGameScore = totalGameScore - 2
-                } 
-
-                calculateTotals()
-                console.log('total game score - ',totalGameScore)
-                pointTotals.push(totalGameScore)
-                
             }
         }
-    });
-}
+    })
     
-function notEnoughMatches() {
-    message = 'not_enough_matches_found'
-    console.log(message);
-    return message;
-} 
+    gameData.forEach(game => {
+        // ALGORITHM
+        // kills is our first metric for grading
+        
+        if (kills >= 35) {
+            totalGameScore = totalGameScore + 20;
+        } else if (kills < 35 && kills >= 30) {
+            totalGameScore = totalGameScore + 18
+        } else if (kills < 30 && kills >= 25) {
+            totalGameScore = totalGameScore + 16
+        } else if (kills < 25 && kills >= 20) {
+            totalGameScore = totalGameScore + 14
+        } else if (kills < 20 && kills >= 15) {
+            totalGameScore = totalGameScore + 12
+        } else if (kills < 15 && kills >= 10) {
+            totalGameScore = totalGameScore + 6
+        } else if (kills < 10 && kills >= 5) {
+            totalGameScore = totalGameScore + 3
+        } else if (kills < 5 && kills >= 1) {
+            totalGameScore = totalGameScore - 3
+        } else if (kills == 0) {
+            totalGameScore = totalGameScore - 6
+        }
+        
+        // deaths will be our next metric
+        
+
+        if (deaths >= 5) {
+            totalGameScore = totalGameScore - 10;
+        } else if (deaths == 4) {
+            totalGameScore = totalGameScore - 8
+        } else if (deaths == 3) {
+            totalGameScore = totalGameScore - 6
+        } else if (deaths == 2) {
+            totalGameScore = totalGameScore - 4
+        } else if (deaths == 1) {
+            totalGameScore = totalGameScore - 2
+        } else if (deaths == 0) {
+            totalGameScore = totalGameScore + 6
+        }
+
+        // vision score will be our next metric
+
+        // if (vision > 40 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 20;
+        // } else if (vision < 40 && vision >= 35 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 18
+        // } else if (vision < 35 && vision >= 30 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 16
+        // } else if (vision < 30 && vision >= 25 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 14
+        // } else if (vision < 25 && vision >= 20 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 12
+        // } else if (vision < 20 && vision >= 15 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 10
+        // } else if (vision < 15 && vision >= 10 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 5
+        // } else if (vision < 10 && vision > 0 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore + 1
+        // } else if (vision == 0 && role != 'SUPPORT') {
+        //     totalGameScore = totalGameScore - 2
+        // } 
+        
+        calculateTotals()
+        console.log('total game score - ',totalGameScore)
+        pointTotals.push(totalGameScore)
+        }
+    
+    )
+}
 
 
 function calculateTotals() {
@@ -247,6 +248,7 @@ function calculateTotals() {
     }
     console.log('total', pointSum)
 
+    
     
     if (pointSum <= 50 && pointSum <= 0) {
         message = 'Bronze 4'
@@ -291,8 +293,7 @@ function calculateTotals() {
     } else if (pointSum <= 1100) {
         message = 'TBA'
     }
-
-    pointSum = 0;
+    
     console.log(message)
     return pointSum, message;
     
