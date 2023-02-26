@@ -48,13 +48,13 @@ app.get('/getSummonerData', async (req, res) => {
         pointTotals = []
         pointSum = 0
         res.json({status: '200', message: message})
+        message = '';
     }, 5000) 
 })
 
 // this function calls the Riot API and returns info about the summoner based off of their LoL summoner name, which we will use to call other API's to give us information. 
 // it uses the endpoint + the summoner name + the api key suffix for authorization
 function getSummonerBySummonerName(endpoint, summonerName, callback) {
-    console.log(endpoint + summonerName + riotAPISuffix)
     https.get(endpoint + summonerName + riotAPISuffix, (res) => {
         let summonerData = '';
         
@@ -122,10 +122,11 @@ function getMatchesBySummonerId(error, summonerData) {
             callback(err)
         });
     }
-
+}
     
     // This function will send an API request to get the match info by the match id which we got from the "sendSummonerName" function
 function getMatchInfoByMatchId(endpoint, matchId, playerId) {
+    console.log(matchId)
     https.get(endpoint + matchId + riotAPISuffix, (res) => {
         let matchInfo = '';
     
@@ -138,164 +139,183 @@ function getMatchInfoByMatchId(endpoint, matchId, playerId) {
         determineRank(matchInfo, playerId)
     });
     
-});
-
+    });
 }
+
 // finds the user's playerId from the rest of the players in the game
 function determineRank(matchInfo, playerId) {
-    const players = matchInfo.metadata.participants
-    const unparsedParticipantInfo = JSON.stringify(matchInfo.info.participants)
-    const participantInfo = JSON.parse(unparsedParticipantInfo)
-
-    const performanceByPlayerId = participantInfo.find(obj => obj.puuid == playerId) // using game to find every json object that contains our puuid
-
-    var deaths = participantInfo.deaths
-    var kills = participantInfo.kills
-    // var role = game.role
-    // var vision = game.visionScore
     
-    const gameData = [];
+    var allParticipantInfo = JSON.stringify(matchInfo.info.participants)
+    allParticipantInfo = JSON.parse(allParticipantInfo)
 
-    players.forEach(player => {
-        if (playerId == player) {
-            
-            gameData.push(performanceByPlayerId)
-            for (let game in gameData) {
-                if (typeof game.kills === undefined) {
-                    gameData.pop();
-                }
-            }
-        }
-    })
+    var oneParticipantInfo = allParticipantInfo.find(playerObj => playerObj.puuid == playerId)
+
+    oneParticipantInfo = JSON.stringify(oneParticipantInfo)
+
+    try {
+        oneParticipantInfo = JSON.parse(oneParticipantInfo)
+    } catch (SyntaxError) {
+        message = 'previous_games_invalid'
+        return message;
+    }
     
-    gameData.forEach(game => {
-        // ALGORITHM
-        // kills is our first metric for grading
-        
-        if (kills >= 35) {
-            totalGameScore = totalGameScore + 20;
-        } else if (kills < 35 && kills >= 30) {
-            totalGameScore = totalGameScore + 18
-        } else if (kills < 30 && kills >= 25) {
-            totalGameScore = totalGameScore + 16
-        } else if (kills < 25 && kills >= 20) {
-            totalGameScore = totalGameScore + 14
-        } else if (kills < 20 && kills >= 15) {
-            totalGameScore = totalGameScore + 12
-        } else if (kills < 15 && kills >= 10) {
-            totalGameScore = totalGameScore + 6
-        } else if (kills < 10 && kills >= 5) {
-            totalGameScore = totalGameScore + 3
-        } else if (kills < 5 && kills >= 1) {
-            totalGameScore = totalGameScore - 3
-        } else if (kills == 0) {
-            totalGameScore = totalGameScore - 6
-        }
-        
-        // deaths will be our next metric
-        
+    var kills = oneParticipantInfo.kills
+    var deaths = oneParticipantInfo.deaths
+    var role = oneParticipantInfo.role
+    var vision = oneParticipantInfo.visionScore
+    var damageDealt = oneParticipantInfo.totalDamageDealt
 
-        if (deaths >= 5) {
-            totalGameScore = totalGameScore - 10;
-        } else if (deaths == 4) {
-            totalGameScore = totalGameScore - 8
-        } else if (deaths == 3) {
-            totalGameScore = totalGameScore - 6
-        } else if (deaths == 2) {
-            totalGameScore = totalGameScore - 4
-        } else if (deaths == 1) {
-            totalGameScore = totalGameScore - 2
-        } else if (deaths == 0) {
-            totalGameScore = totalGameScore + 6
-        }
+    if (kills >= 35) {
+        totalGameScore = totalGameScore + 500;
+    } else if (kills < 35 && kills >= 30) {
+        totalGameScore = totalGameScore + 300
+    } else if (kills < 30 && kills >= 25) {
+        totalGameScore = totalGameScore + 200
+    } else if (kills < 25 && kills >= 20) {
+        totalGameScore = totalGameScore + 100
+    } else if (kills < 20 && kills >= 15) {
+        totalGameScore = totalGameScore + 75
+    } else if (kills < 15 && kills >= 10) {
+        totalGameScore = totalGameScore + 50
+    } else if (kills < 10 && kills >= 5) {
+        totalGameScore = totalGameScore + 25
+    } else if (kills < 5 && kills >= 1) {
+        totalGameScore = totalGameScore + 10
+    } else if (kills == 0) {
+        totalGameScore = totalGameScore - 10
+    }
+    console.log('after kills - ', totalGameScore)
 
-        // vision score will be our next metric
+    if (deaths >= 5) {
+        totalGameScore = totalGameScore - 30;
+    } else if (deaths === 4) {
+        totalGameScore = totalGameScore - 20
+    } else if (deaths === 3) {
+        totalGameScore = totalGameScore - 15
+    } else if (deaths === 2) {
+        totalGameScore = totalGameScore - 10
+    } else if (deaths === 1) {
+        totalGameScore = totalGameScore - 5
+    } else if (deaths === 0) {
+        totalGameScore = totalGameScore + 10
+    }
+    console.log('after deaths - ', totalGameScore)
 
-        // if (vision > 40 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 20;
-        // } else if (vision < 40 && vision >= 35 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 18
-        // } else if (vision < 35 && vision >= 30 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 16
-        // } else if (vision < 30 && vision >= 25 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 14
-        // } else if (vision < 25 && vision >= 20 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 12
-        // } else if (vision < 20 && vision >= 15 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 10
-        // } else if (vision < 15 && vision >= 10 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 5
-        // } else if (vision < 10 && vision > 0 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore + 1
-        // } else if (vision == 0 && role != 'SUPPORT') {
-        //     totalGameScore = totalGameScore - 2
-        // } 
-        
-        calculateTotals()
-        console.log('total game score - ',totalGameScore)
-        pointTotals.push(totalGameScore)
-        }
-    
-    )
+    if (vision > 40 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore + 50;
+    } else if (vision < 40 && vision >= 35 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore + 40
+    } else if (vision < 35 && vision >= 30 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore + 30
+    } else if (vision < 30 && vision >= 25 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore + 20
+    } else if (vision < 25 && vision >= 20 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore + 15
+    } else if (vision < 20 && vision >= 15 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore + 10
+    } else if (vision < 15 && vision >= 10 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore + 5
+    } else if (vision < 10 && vision > 0 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore - 5
+    } else if (vision == 0 && role != 'SUPPORT') {
+        totalGameScore = totalGameScore - 10
+    } 
+
+    if (damageDealt >= 200000) {
+        totalGameScore = totalGameScore + 200
+    } else if (damageDealt >= 180000 && damageDealt < 160000) {
+        totalGameScore = totalGameScore + 175
+    } else if (damageDealt >= 160000 && damageDealt < 140000) {
+        totalGameScore = totalGameScore + 150
+    } else if (damageDealt >= 140000 && damageDealt < 120000) {
+        totalGameScore = totalGameScore + 125
+    } else if (damageDealt >= 120000 && damageDealt < 100000) {
+        totalGameScore = totalGameScore + 100
+    } else if (damageDealt >= 100000 && damageDealt < 80000) {
+        totalGameScore = totalGameScore + 75
+    } else if (damageDealt >= 80000 && damageDealt < 60000) {
+        totalGameScore = totalGameScore + 50
+    } else if (damageDealt >= 60000 && damageDealt < 40000) {
+        totalGameScore = totalGameScore + 25
+    } else if (damageDealt >= 40000 && damageDealt < 20000) {
+        totalGameScore = totalGameScore + 10
+    } else if (damageDealt >= 20000 && damageDealt < 10000) {
+        totalGameScore = totalGameScore + 5
+    } else if (damageDealt >= 10000 && damageDealt < 8000) {
+        totalGameScore = totalGameScore + 0
+    } else if (damageDealt >= 8000 && damageDealt < 6000) {
+        totalGameScore = totalGameScore - 10
+    } else if (damageDealt >= 6000 && damageDealt < 4000) {
+        totalGameScore = totalGameScore - 25
+    } else if (damageDealt >= 4000 && damageDealt < 2000) {
+        totalGameScore = totalGameScore - 50
+    } else if (damageDealt >= 1000 && damageDealt < 0) {
+        totalGameScore = totalGameScore - 100
+    } 
+
+    pointTotals.push(totalGameScore)
+    calculateTotals();
+    // console.log('participantinfo - ', oneParticipantInfo)
+    // console.log(matchInfo, playerId)
 }
-
 
 function calculateTotals() {
     pointSum = 0;
-
+    console.log('calculateTotals!')
     for (let i = 0; i < pointTotals.length; i++) {
         pointSum += pointTotals[i];
     }
-    console.log('total', pointSum)
 
     
-    
-    if (pointSum <= 50 && pointSum <= 0) {
+    if (pointSum <= 200 && pointSum > 0) {
         message = 'Bronze 4'
-    } else if (pointSum <= 100 && pointSum > 50) {
+    } else if (pointSum <= 300 && pointSum > 200) {
         message = 'Bronze 3'
-    } else if (pointSum <= 150 && pointSum > 100) {
+    } else if (pointSum <= 400 && pointSum > 300) {
         message = 'Bronze 2'
-    } else if (pointSum <= 200 && pointSum > 150) {
+    } else if (pointSum <= 500 && pointSum > 400) {
         message = 'Bronze 1'
-    } else if (pointSum <= 250 && pointSum > 200) {
+    } else if (pointSum <= 600 && pointSum > 500) {
         message = 'Silver 4'
-    } else if (pointSum <= 300 && pointSum > 250) {
+    } else if (pointSum <= 700 && pointSum > 700) {
         message = 'Silver 3'
-    } else if (pointSum <= 350 && pointSum > 300) {
+    } else if (pointSum <= 800 && pointSum > 800) {
         message = 'Silver 2'
-    } else if (pointSum <= 400 && pointSum > 350) {
+    } else if (pointSum <= 900 && pointSum > 1000) {
         message = 'Silver 1'
-    } else if (pointSum <= 450 && pointSum > 400) {
+    } else if (pointSum <= 1200 && pointSum > 900) {
         message = 'Gold 4'
-    } else if (pointSum <= 500 && pointSum > 450) {
+    } else if (pointSum <= 1400 && pointSum > 1200) {
         message = 'Gold 3'
-    } else if (pointSum <= 550 && pointSum > 500) {
+    } else if (pointSum <= 1600 && pointSum > 1400) {
         message = 'Gold 2'
-    } else if (pointSum <= 600 && pointSum > 550) {
+    } else if (pointSum <= 1800 && pointSum > 1600) {
         message = 'Gold 1'
-    } else if (pointSum <= 650 && pointSum > 600) {
+    } else if (pointSum <= 2000 && pointSum > 1800) {
         message = 'Platinum 4'
-    } else if (pointSum <= 700 && pointSum > 650) {
+    } else if (pointSum <= 2200 && pointSum > 2000) {
         message = 'Platinum 3'
-    } else if (pointSum <= 800 && pointSum > 700) {
+    } else if (pointSum <= 2400 && pointSum > 2200) {
         message = 'Platinum 2'
-    } else if (pointSum <= 850 && pointSum > 750) {
+    } else if (pointSum <= 2600 && pointSum > 2400) {
         message = 'Platinum 1'
-    } else if (pointSum <= 900 && pointSum > 850) {
+    } else if (pointSum <= 2800 && pointSum > 2600) {
         message = 'Diamond 4'
-    } else if (pointSum <= 950 && pointSum > 900) {
+    } else if (pointSum <= 3000 && pointSum > 2800) {
         message = 'Diamond 3'
-    } else if (pointSum <= 1000 && pointSum > 950) {
+    } else if (pointSum <= 3400 && pointSum > 3000) {
         message = 'Diamond 2'
-    } else if (pointSum <= 1050 && pointSum > 1000) {
+    } else if (pointSum <= 3800 && pointSum > 3400) {
         message = 'Diamond 1'
-    } else if (pointSum <= 1100) {
-        message = 'TBA'
+    } else if (pointSum <= 4500 && pointSum > 3800) {
+        message = 'Masters'
+    } else if (pointSum <= 7000 && pointSum > 4500) {
+        message = 'Grandmasters'
+    } else if (pointSum > 7000) {
+        message = 'Challenger'
     }
     
-    console.log(message)
+    console.log('pointSum', pointSum)
+    console.log('--------LOOP--------')
     return pointSum, message;
-    
-    }   
 }
