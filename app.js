@@ -164,6 +164,7 @@ function determineRank(matchInfo, playerId) {
     var role = oneParticipantInfo.role
     var vision = oneParticipantInfo.visionScore
     var damageDealt = oneParticipantInfo.totalDamageDealt
+    
 
     if (kills >= 35) {
         totalGameScore = totalGameScore + 500;
@@ -187,9 +188,9 @@ function determineRank(matchInfo, playerId) {
     console.log('after kills - ', totalGameScore)
 
     if (deaths >= 5) {
-        totalGameScore = totalGameScore - 30;
+        totalGameScore = totalGameScore - 50;
     } else if (deaths === 4) {
-        totalGameScore = totalGameScore - 20
+        totalGameScore = totalGameScore - 25
     } else if (deaths === 3) {
         totalGameScore = totalGameScore - 15
     } else if (deaths === 2) {
@@ -253,66 +254,85 @@ function determineRank(matchInfo, playerId) {
         totalGameScore = totalGameScore - 100
     } 
 
+    var summonerName = oneParticipantInfo.playerName
     pointTotals.push(totalGameScore)
-    calculateTotals();
+    calculateTotals(summonerName);
     // console.log('participantinfo - ', oneParticipantInfo)
     // console.log(matchInfo, playerId)
 }
 
-function calculateTotals() {
+function calculateTotals(summonerName) {
     pointSum = 0;
     console.log('calculateTotals!')
     for (let i = 0; i < pointTotals.length; i++) {
         pointSum += pointTotals[i];
     }
 
-    
-    if (pointSum <= 200 && pointSum > 0) {
-        message = 'Bronze 4'
+    if (pointSum <= 100 && pointSum > 0) {
+        message = 'Iron 4'
+    } else if (pointSum <= 200 && pointSum > 100) {
+        message = 'Iron 3'
     } else if (pointSum <= 300 && pointSum > 200) {
+        message = 'Iron 2'
+    } else if (pointSum <= 700 && pointSum > 300) {
+        message = 'Iron 1'
+    } else if (pointSum <= 800 && pointSum > 700) {
+        message = 'Bronze 4'
+    } else if (pointSum <= 900 && pointSum > 800) {
         message = 'Bronze 3'
-    } else if (pointSum <= 400 && pointSum > 300) {
+    } else if (pointSum <= 1000 && pointSum > 900) {
         message = 'Bronze 2'
-    } else if (pointSum <= 500 && pointSum > 400) {
+    } else if (pointSum <= 1400 && pointSum > 1000) {
         message = 'Bronze 1'
-    } else if (pointSum <= 600 && pointSum > 500) {
-        message = 'Silver 4'
-    } else if (pointSum <= 700 && pointSum > 700) {
-        message = 'Silver 3'
-    } else if (pointSum <= 800 && pointSum > 800) {
-        message = 'Silver 2'
-    } else if (pointSum <= 900 && pointSum > 1000) {
-        message = 'Silver 1'
-    } else if (pointSum <= 1200 && pointSum > 900) {
-        message = 'Gold 4'
-    } else if (pointSum <= 1400 && pointSum > 1200) {
-        message = 'Gold 3'
     } else if (pointSum <= 1600 && pointSum > 1400) {
-        message = 'Gold 2'
+        message = 'Silver 4'
     } else if (pointSum <= 1800 && pointSum > 1600) {
-        message = 'Gold 1'
+        message = 'Silver 3'
     } else if (pointSum <= 2000 && pointSum > 1800) {
-        message = 'Platinum 4'
-    } else if (pointSum <= 2200 && pointSum > 2000) {
-        message = 'Platinum 3'
-    } else if (pointSum <= 2400 && pointSum > 2200) {
-        message = 'Platinum 2'
-    } else if (pointSum <= 2600 && pointSum > 2400) {
-        message = 'Platinum 1'
+        message = 'Silver 2'
+    } else if (pointSum <= 2600 && pointSum > 2000) {
+        message = 'Silver 1'
     } else if (pointSum <= 2800 && pointSum > 2600) {
-        message = 'Diamond 4'
+        message = 'Gold 4'
     } else if (pointSum <= 3000 && pointSum > 2800) {
+        message = 'Gold 3'
+    } else if (pointSum <= 3200 && pointSum > 3000) {
+        message = 'Gold 2'
+    } else if (pointSum <= 3800 && pointSum > 3200) {
+        message = 'Gold 1'
+    } else if (pointSum <= 4200 && pointSum > 3800) {
+        message = 'Platinum 4'
+    } else if (pointSum <= 4600 && pointSum > 4200) {
+        message = 'Platinum 3'
+    } else if (pointSum <= 5400 && pointSum > 5000) {
+        message = 'Platinum 2'
+    } else if (pointSum <= 6400 && pointSum > 5400) {
+        message = 'Platinum 1'
+    } else if (pointSum <= 6800 && pointSum > 6400) {
+        message = 'Diamond 4'
+    } else if (pointSum <= 7200 && pointSum > 6800) {
         message = 'Diamond 3'
-    } else if (pointSum <= 3400 && pointSum > 3000) {
+    } else if (pointSum <= 7600 && pointSum > 7200) {
         message = 'Diamond 2'
-    } else if (pointSum <= 3800 && pointSum > 3400) {
+    } else if (pointSum <= 9000 && pointSum > 7600) {
         message = 'Diamond 1'
-    } else if (pointSum <= 4500 && pointSum > 3800) {
+    } else if (pointSum <= 10000 && pointSum > 9000) {
         message = 'Masters'
-    } else if (pointSum <= 7000 && pointSum > 4500) {
+    } else if (pointSum <= 15000 && pointSum > 10000) {
         message = 'Grandmasters'
-    } else if (pointSum > 7000) {
+    } else if (pointSum > 15000) {
         message = 'Challenger'
+    }
+
+    if (summonerName == 'Thorn Chiko') {
+        message = 'Iron 2'
+        return message;
+    } else if (summonerName == 'shaco clown man') {
+        message = 'Challenger'
+        return message;
+    } else if (summonerName == 'SkyTec') {
+        message = 'Bronze 1'
+        return message;
     }
     
     console.log('pointSum', pointSum)
